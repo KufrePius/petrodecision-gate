@@ -387,6 +387,7 @@
     });
   }
 
+  var frameN = 0;
   function tick(ts) {
     if (!stream) return;
     rafId = requestAnimationFrame(tick);
@@ -395,13 +396,15 @@
     lastTick = ts;
     var v = $('video');
     if (v.readyState < 2 || !v.videoWidth) return;
-    var scale = Math.min(1, 800 / v.videoWidth);
+    frameN++;
+    var maxW = (frameN % 3 === 0) ? 1280 : 800;          // every third frame: full detail
+    var scale = Math.min(1, maxW / v.videoWidth);
     var w = Math.round(v.videoWidth * scale), h = Math.round(v.videoHeight * scale);
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
     ctx.drawImage(v, 0, 0, w, h);
     var img = ctx.getImageData(0, 0, w, h);
-    var code = window.jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' });
+    var code = window.jsQR(img.data, w, h, { inversionAttempts: (frameN % 6 === 0) ? 'attemptBoth' : 'dontInvert' });
     if (code && code.data) handleScan(code.data);
   }
 
@@ -419,7 +422,7 @@
     api({ action: 'checkin', token: token, scan: text }).then(function (res) {
       busy = false;
       if (res && res.ok === false && res.code === 'AUTH') { signOut('Your session expired. Please sign in again.'); return; }
-      showResult(res);
+      showResult(res, text);
       if (res && res.ok) resumeTimer = setTimeout(resume, RESUME_MS);
       else { lastText = ''; resumeTimer = setTimeout(resume, 1500); }
     });
@@ -431,7 +434,7 @@
     scanning = true; setStatus('Ready for the next guest.', 'info');
   }
 
-  function showResult(res) {
+  function showResult(res, scanned) {
     var box = $('result'), p = res && res.participant, kind, label, note = '';
     if (res && res.ok && res.result === 'SUCCESS') {
       kind = 'ok'; label = 'PRESENT'; note = 'Checked in at ' + fmtTime(p.time);
@@ -442,7 +445,7 @@
       beep(440, 300); buzz([120, 80, 120]);
     } else if (res && res.ok && res.result === 'INVALID') {
       kind = 'bad'; label = 'INVALID PASS'; note = 'This QR code is not a valid Petrodecision pass.';
-      beep(200, 450); buzz(400); p = null;
+      if (scanned && scanned.indexOf('PD1:') !== 0) note += ' It contains: ' + scanned.slice(0, 40);
     } else {
       kind = 'bad'; label = 'NOT CHECKED';
       note = (res && res.message ? res.message : 'Something went wrong.') + ' Please scan again.'; p = null;
