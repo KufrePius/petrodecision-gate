@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Petrodecision Gate Scanner</title>
+<style>
+  :root {
+    --black:#000; --navy-950:#050d1a; --navy-800:#0b2545; --navy-700:#12325c;
+    --blue:#1f64ad; --blue-light:#4c92dd; --red:#d4121a; --orange:#f58a1f; --green:#1fa971;
+    --text:#e8eef7; --muted:#9fb0c7; --border:#1f3d6b; --card:#0e2140;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; font-size:16px; line-height:1.45;
+    color:var(--text); min-height:100vh; -webkit-text-size-adjust:100%;
+    background:radial-gradient(1000px 500px at 80% -10%,#12325c 0%,var(--navy-950) 60%) fixed var(--navy-950);
+  }
+  [hidden] { display:none !important; }
+  h1 { font-size:1.5rem; margin:0 0 4px; }
+  h2 { font-size:1.05rem; margin:0 0 12px; }
+
+  .brand-slot img { display:block; width:100%; height:auto; }
+  .wordmark { display:flex; flex-direction:column; line-height:1.1; }
+  .wordmark b { font-family:'Arial Narrow',Impact,'Segoe UI',sans-serif; font-size:1.7rem; color:var(--blue-light); }
+  .wordmark span { font-size:.68rem; font-weight:700; color:var(--red); }
+
+  .topbar { background:var(--black); display:flex; align-items:center; gap:12px; padding:8px 14px; padding-top:calc(8px + env(safe-area-inset-top)); }
+  .topbar .brand-slot { width:150px; }
+  .topbar .grow { flex:1; }
+  .accent { height:4px; background:linear-gradient(90deg,var(--blue) 0%,var(--blue) 40%,var(--red) 40%,var(--red) 70%,var(--orange) 70%); }
+  .container { max-width:560px; margin:0 auto; padding:16px 14px calc(30px + env(safe-area-inset-bottom)); }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+  label { display:block; font-weight:600; font-size:.9rem; margin:12px 0 6px; color:#cfdcee; }
+  input[type=password] { width:100%; padding:14px; font-size:16px; font-family:inherit; color:#fff; background:var(--navy-950); border:1px solid var(--border); border-radius:10px; outline:none; }
+  input:focus { border-color:var(--blue-light); box-shadow:0 0 0 3px rgba(76,146,221,.25); }
+  select { width:100%; margin-top:10px; padding:11px; font-size:16px; color:#fff; background:var(--navy-950); border:1px solid var(--border); border-radius:10px; font-family:inherit; }
+  .btn { display:inline-block; text-align:center; text-decoration:none; padding:13px 18px; font-size:1rem; font-weight:700; font-family:inherit; border-radius:10px; border:1px solid transparent; cursor:pointer; color:#fff; }
+  .btn:disabled { opacity:.6; cursor:not-allowed; }
+  .btn-block { display:block; width:100%; margin-top:16px; }
+  .btn-primary { background:linear-gradient(180deg,#e8222a,var(--red)); }
+  .btn-secondary { background:var(--blue); }
+  .btn-outline { background:transparent; border-color:var(--blue-light); }
+  .btn-ghost { background:transparent; color:var(--muted); border-color:var(--border); padding:8px 12px; font-size:.85rem; }
+  .err { color:#ff8a8f; font-weight:600; min-height:1.3em; margin:10px 0 0; }
+  .muted { color:var(--muted); }
+
+  /* sign-in */
+  .login { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:18px; }
+  .login-card { width:100%; max-width:400px; text-align:center; background:var(--black); border:1px solid var(--border); border-top:4px solid var(--red); border-radius:16px; padding:26px 22px; box-shadow:0 12px 40px rgba(0,0,0,.5); }
+  .login-card .brand-slot { max-width:280px; margin:0 auto 12px; }
+  .login-card .wordmark { align-items:center; }
+  .login-card form { text-align:left; }
+
+  /* scanner */
+  .viewfinder { position:relative; background:#000; border-radius:12px; overflow:hidden; width:100%; aspect-ratio:1 / 1; border:1px solid var(--border); }
+  .viewfinder video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .vf-idle { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); gap:8px; }
+  .vf-frame { position:absolute; inset:14%; pointer-events:none; }
+  .vf-frame span { position:absolute; width:30px; height:30px; border:4px solid var(--orange); }
+  .vf-frame span:nth-child(1) { top:0; left:0; border-right:0; border-bottom:0; border-top-left-radius:8px; }
+  .vf-frame span:nth-child(2) { top:0; right:0; border-left:0; border-bottom:0; border-top-right-radius:8px; }
+  .vf-frame span:nth-child(3) { bottom:0; left:0; border-right:0; border-top:0; border-bottom-left-radius:8px; }
+  .vf-frame span:nth-child(4) { bottom:0; right:0; border-left:0; border-top:0; border-bottom-right-radius:8px; }
+  .vf-line { position:absolute; left:4%; right:4%; top:6%; height:3px; background:var(--red); box-shadow:0 0 10px var(--red); animation:vf 2s ease-in-out infinite alternate; }
+  @keyframes vf { from { top:6%; } to { top:92%; } }
+
+  .status { text-align:center; font-weight:700; margin:12px 0 2px; min-height:1.4em; }
+  .status.bad { color:#ff8a8f; } .status.ok { color:#7be2b5; } .status.info { color:var(--muted); }
+  .controls { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+  .controls .btn { flex:1 1 120px; }
+  .help { background:rgba(212,18,26,.12); border:1px solid var(--red); border-radius:10px; padding:12px 14px; margin-top:12px; font-size:.9rem; color:#ffc9cc; }
+  .help ul { margin:6px 0 0 18px; padding:0; }
+
+  .result { margin-bottom:14px; border-radius:14px; overflow:hidden; border:2px solid var(--border); }
+  .result-top { padding:18px 10px; text-align:center; font-size:1.8rem; font-weight:800; color:#fff; letter-spacing:.03em; }
+  .result-body { background:var(--card); padding:14px; text-align:center; }
+  .result-body p { margin:4px 0; }
+  .r-name { font-size:1.55rem; font-weight:800; word-break:break-word; }
+  .r-id { font-family:Consolas,'Courier New',monospace; color:var(--orange); font-weight:700; }
+  .result.ok { border-color:var(--green); } .result.ok .result-top { background:var(--green); }
+  .result.warn { border-color:var(--orange); } .result.warn .result-top { background:var(--orange); color:#1a1000; }
+  .result.bad { border-color:var(--red); } .result.bad .result-top { background:var(--red); }
+  .result .btn { margin-top:10px; }
+
+  table { width:100%; border-collapse:collapse; font-size:.92rem; }
+  th { text-align:left; color:var(--muted); font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; padding:6px 8px; border-bottom:1px solid var(--border); }
+  td { padding:9px 8px; border-bottom:1px solid rgba(31,61,107,.5); }
+  td.mono { font-family:Consolas,'Courier New',monospace; color:var(--orange); white-space:nowrap; }
+  td.empty { text-align:center; color:var(--muted); }
+  .r-ok-t { color:#7be2b5; font-weight:700; } .r-warn-t { color:var(--orange); font-weight:700; } .r-bad-t { color:#ff8a8f; font-weight:700; }
+</style>
+</head>
+<body>
+
+<!-- ============ SIGN-IN ============ -->
+<div id="login" class="login" hidden>
+  <div class="login-card">
+    <div class="brand-slot"><div class="wordmark"><b>Petrodecision</b><span>A Petroleum Technology Company</span></div></div>
+    <h1>Gate Scanner</h1>
+    <p class="muted" style="margin:0 0 6px;font-size:.9rem">Authorised registration officers only</p>
+    <form id="login-form" autocomplete="off" novalidate>
+      <label for="pin">Administrator PIN</label>
+      <input id="pin" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Enter PIN">
+      <button id="login-btn" class="btn btn-primary btn-block" type="submit">Sign in</button>
+      <p id="login-err" class="err" role="alert"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ============ SCANNER ============ -->
+<div id="app" hidden>
+  <header class="topbar">
+    <div class="brand-slot"><div class="wordmark"><b>Petrodecision</b><span>A Petroleum Technology Company</span></div></div>
+    <div class="grow"></div>
+    <button id="signout" class="btn btn-ghost" type="button">Sign out</button>
+  </header>
+  <div class="accent"></div>
+
+  <main class="container">
+    <div class="card">
+      <div class="viewfinder">
+        <video id="video" playsinline muted autoplay></video>
+        <div class="vf-frame" id="frame" hidden><span></span><span></span><span></span><span></span><i class="vf-line"></i></div>
+        <div class="vf-idle" id="idle">
+          <svg viewBox="0 0 24 24" width="54" height="54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span>Camera is off</span>
+        </div>
+      </div>
+      <p id="status" class="status info">Tap "Start camera" to begin.</p>
+      <div class="controls">
+        <button id="start" class="btn btn-primary" type="button">Start camera</button>
+        <button id="flip" class="btn btn-secondary" type="button" hidden>Flip camera</button>
+        <button id="torch" class="btn btn-outline" type="button" hidden>Light</button>
+      </div>
+      <select id="select" hidden aria-label="Choose camera"></select>
+      <div id="help" class="help" hidden></div>
+    </div>
+
+    <div id="result" class="result" hidden>
+      <div id="result-top" class="result-top"></div>
+      <div class="result-body">
+        <p id="r-name" class="r-name"></p>
+        <p id="r-id" class="r-id"></p>
+        <p id="r-org"></p>
+        <p id="r-note" class="muted"></p>
+        <button id="next" class="btn btn-secondary" type="button">Scan next guest</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Recent scans</h2>
+      <table>
+        <thead><tr><th>Time</th><th>Guest</th><th>Result</th></tr></thead>
+        <tbody id="recent"><tr><td colspan="3" class="empty">No scans yet.</td></tr></tbody>
+      </table>
+    </div>
+    <p class="muted" style="text-align:center;font-size:.85rem">For the dashboard, registration and name search, use the main Petrodecision app.</p>
+  </main>
+</div>
+
+<script>
+(function () {
+  // ================== SETTINGS ==================
+  // Paste your Apps Script web app address (the one ending in /exec) between the quotes:
+  var API_URL = 'https://script.google.com/macros/s/AKfycbyDoAH2SjsNAU0BpZyxh14srpxKNh0Nt0WnHlMJPYsMZhTZJxfQUZTX6EWMQbDiDfVb/exec';
+  // ==============================================
+
+  var LIB_URLS = [
+    'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js'
+  ];
+  var RESUME_MS = 3000, SAME_CODE_MS = 10000, STORE_KEY = 'pd_gate_session';
+
+  var token = null, stream = null, devices = [], scanning = false, busy = false, rafId = null;
+  var lastText = '', lastTextAt = 0, lastTick = 0, resumeTimer = null, everStarted = false;
+  var currentDeviceId = null, torchOn = false, libState = 'idle', libWaiters = [];
+  var recent = [], audioCtx = null, wakeLock = null;
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d');
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtTime(t) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); if (!m) return t || '';
+    var h = parseInt(m[1], 10), s = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
+    return h + ':' + m[2] + ' ' + s;
+  }
+  function fmtDate(d) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d || '')); if (!m) return d || '';
+    var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return parseInt(m[3], 10) + ' ' + mo[parseInt(m[2], 10) - 1] + ' ' + m[1];
+  }
+
+  // ---------- server ----------
+  function api(payload) {
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 30000);
+    var opts = { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' };
+    if (ctrl) opts.signal = ctrl.signal;
+    return fetch(API_URL, opts).then(function (r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).catch(function () {
+      clearTimeout(timer);
+      return { ok: false, code: 'NETWORK', message: 'Could not reach the server. Check the internet connection and try again.' };
+    });
+  }
+
+  // ---------- logo ----------
+  function applyLogo(uri) {
+    var slots = document.querySelectorAll('.brand-slot');
+    for (var i = 0; i < slots.length; i++) {
+      (function (slot) {
+        var old = slot.innerHTML;
+        var img = new Image();
+        img.alt = 'Petrodecision - A Petroleum Technology Company';
+        img.onload = function () { slot.innerHTML = ''; slot.appendChild(img); };
+        img.onerror = function () { slot.innerHTML = old; };
+        img.src = uri;
+      })(slots[i]);
+    }
+  }
+
+  // ---------- session ----------
+  function saveSession(t) { try { if (t) localStorage.setItem(STORE_KEY, JSON.stringify({ t: t, at: Date.now() })); else localStorage.removeItem(STORE_KEY); } catch (e) {} }
+  function loadSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      if (s && s.t && Date.now() - s.at < 5.5 * 3600 * 1000) return s.t;
+    } catch (e) {}
+    return null;
+  }
+
+  function showLogin(msg) {
+    stopCamera();
+    $('app').hidden = true; $('login').hidden = false;
+    $('login-err').textContent = msg || '';
+    $('pin').value = '';
+    setTimeout(function () { try { $('pin').focus(); } catch (e) {} }, 50);
+  }
+  function showApp() { $('login').hidden = true; $('app').hidden = false; }
+
+  function signOut(msg) {
+    var old = token; token = null; saveSession(null);
+    if (old) api({ action: 'logout', token: old });
+    showLogin(msg || '');
+  }
+
+  function onLogin(ev) {
+    ev.preventDefault();
+    var btn = $('login-btn'), err = $('login-err'), pin = $('pin').value.trim();
+    if (API_URL.indexOf('https://script.google.com/macros/s/') !== 0) {
+      err.textContent = 'Setup incomplete: the web app address has not been pasted into this page.'; return;
+    }
+    if (!pin) { err.textContent = 'Please enter the administrator PIN.'; return; }
+    err.textContent = ''; btn.disabled = true; btn.textContent = 'Checking...';
+    api({ action: 'login', pin: pin }).then(function (res) {
+      btn.disabled = false; btn.textContent = 'Sign in';
+      if (res && res.ok && res.token) {
+        token = res.token; saveSession(token); $('pin').value = ''; showApp();
+      } else {
+        err.textContent = (res && res.message) || 'Sign-in failed.';
+        $('pin').value = '';
+      }
+    });
+  }
+
+  // ---------- QR library ----------
+  function loadLib(cb) {
+    if (window.jsQR) { cb(true); return; }
+    libWaiters.push(cb);
+    if (libState === 'loading') return;
+    libState = 'loading';
+    var i = 0;
+    (function next() {
+      if (window.jsQR) { done(true); return; }
+      if (i >= LIB_URLS.length) { done(false); return; }
+      var s = document.createElement('script');
+      s.src = LIB_URLS[i++]; s.onload = next; s.onerror = next;
+      document.head.appendChild(s);
+    })();
+    function done(ok) { libState = ok ? 'ready' : 'failed'; var w = libWaiters; libWaiters = []; w.forEach(function (f) { f(ok); }); }
+  }
+
+  // ---------- feedback ----------
+  function setStatus(msg, kind) { var s = $('status'); s.textContent = msg; s.className = 'status ' + (kind || 'info'); }
+  function beep(freq, ms) {
+    try {
+      if (!audioCtx) return;
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = freq; o.type = 'sine'; g.gain.value = 0.15;
+      o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + ms / 1000);
+    } catch (e) {}
+  }
+  function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+  function showHelp(html) { var h = $('help'); if (!html) { h.hidden = true; h.innerHTML = ''; } else { h.innerHTML = html; h.hidden = false; } }
+
+  function keepAwake() {
+    try { if (navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; l.addEventListener('release', function () { wakeLock = null; }); }, function () {}); } catch (e) {}
+  }
+
+  // ---------- camera ----------
+  function stopCamera() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    try { $('video').srcObject = null; } catch (e) {}
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+    scanning = false; torchOn = false;
+    $('frame').hidden = true; $('idle').hidden = false; $('torch').hidden = true;
+    $('start').textContent = 'Start camera';
+  }
+
+  function cameraError(err) {
+    stopCamera();
+    var n = err && err.name ? err.name : '', msg, tips;
+    if (n === 'NotAllowedError' || n === 'PermissionDeniedError' || n === 'SecurityError') {
+      msg = 'Camera access was blocked.';
+      tips = '<strong>Camera access was blocked.</strong><ul><li>Tap the lock icon in the address bar, allow the camera, then tap Start camera again.</li><li>iPhone: Settings, Safari, Camera, choose Ask or Allow.</li><li>Android: Settings, Apps, your browser, Permissions, Camera.</li></ul>';
+    } else if (n === 'NotFoundError' || n === 'OverconstrainedError') {
+      msg = 'No usable camera was found.';
+      tips = '<strong>No usable camera was found.</strong> Try another phone or browser.';
+    } else if (n === 'NotReadableError') {
+      msg = 'The camera is being used by another app.';
+      tips = '<strong>The camera is busy.</strong> Close other apps or tabs that use the camera, then try again.';
+    } else {
+      msg = 'The camera could not be started.';
+      tips = '<strong>The camera could not be started.</strong> Reload the page and try again.';
+    }
+    setStatus(msg, 'bad');
+    showHelp(tips + '<p style="margin:8px 0 0;font-size:.8rem;opacity:.85">Details: ' + String(n || 'unknown').replace(/[<>&]/g, '') + '</p>');
+  }
+
+  function fillDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices().then(function (list) {
+      devices = list.filter(function (d) { return d.kind === 'videoinput'; });
+      var sel = $('select'); sel.innerHTML = '';
+      var active = null; try { active = stream.getVideoTracks()[0].getSettings().deviceId; } catch (e) {}
+      devices.forEach(function (d, i) {
+        var o = document.createElement('option'); o.value = d.deviceId; o.textContent = d.label || ('Camera ' + (i + 1));
+        if (d.deviceId === active) o.selected = true; sel.appendChild(o);
+      });
+      if (active) currentDeviceId = active;
+      $('select').hidden = devices.length < 2; $('flip').hidden = devices.length < 2;
+    }, function () {});
+  }
+
+  function tuneTrack() {
+    try {
+      var track = stream.getVideoTracks()[0];
+      var caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) {
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () {});
+      }
+      $('torch').hidden = !caps.torch;
+    } catch (e) {}
+  }
+
+  function startCamera(deviceId) {
+    stopCamera(); showHelp('');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cameraError({ name: 'NotFoundError' }); return; }
+    setStatus('Starting camera...', 'info');
+    loadLib(function (ok) {
+      if (!ok) {
+        setStatus('The QR reader could not load. Check the internet connection.', 'bad');
+        showHelp('<strong>The QR reader library did not load.</strong> Check the internet connection and refresh this page.');
+        return;
+      }
+      var video = { width: { ideal: 1280 }, height: { ideal: 720 } };
+      if (deviceId) video.deviceId = { exact: deviceId }; else video.facingMode = { ideal: 'environment' };
+      navigator.mediaDevices.getUserMedia({ video: video, audio: false }).then(function (s) {
+        stream = s;
+        var v = $('video'); v.srcObject = s;
+        var p = v.play(); if (p && p.catch) p.catch(function () {});
+        everStarted = true; scanning = true; busy = false;
+        $('frame').hidden = false; $('idle').hidden = true; $('start').textContent = 'Stop camera';
+        setStatus('Ready. Point the camera at the guest\'s QR code.', 'info');
+        fillDevices(); tuneTrack(); keepAwake();
+        rafId = requestAnimationFrame(tick);
+      }).catch(cameraError);
+    });
+  }
+
+  function tick(ts) {
+    if (!stream) return;
+    rafId = requestAnimationFrame(tick);
+    if (busy || !scanning) return;
+    if (ts - lastTick < 100) return;
+    lastTick = ts;
+    var v = $('video');
+    if (v.readyState < 2 || !v.videoWidth) return;
+    var scale = Math.min(1, 800 / v.videoWidth);
+    var w = Math.round(v.videoWidth * scale), h = Math.round(v.videoHeight * scale);
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    ctx.drawImage(v, 0, 0, w, h);
+    var img = ctx.getImageData(0, 0, w, h);
+    var code = window.jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' });
+    if (code && code.data) handleScan(code.data);
+  }
+
+  // ---------- verification ----------
+  function handleScan(raw) {
+    var text = String(raw).trim().slice(0, 300), now = Date.now();
+    if (text === lastText && now - lastTextAt < SAME_CODE_MS) return;
+    lastText = text; lastTextAt = now;
+    submit(text);
+  }
+
+  function submit(text) {
+    busy = true; scanning = false;
+    setStatus('Checking pass...', 'info');
+    api({ action: 'checkin', token: token, scan: text }).then(function (res) {
+      busy = false;
+      if (res && res.ok === false && res.code === 'AUTH') { signOut('Your session expired. Please sign in again.'); return; }
+      showResult(res);
+      if (res && res.ok) resumeTimer = setTimeout(resume, RESUME_MS);
+      else { lastText = ''; resumeTimer = setTimeout(resume, 1500); }
+    });
+  }
+
+  function resume() {
+    clearTimeout(resumeTimer);
+    if (!stream) return;
+    scanning = true; setStatus('Ready for the next guest.', 'info');
+  }
+
+  function showResult(res) {
+    var box = $('result'), p = res && res.participant, kind, label, note = '';
+    if (res && res.ok && res.result === 'SUCCESS') {
+      kind = 'ok'; label = 'PRESENT'; note = 'Checked in at ' + fmtTime(p.time);
+      beep(880, 180); buzz(150);
+    } else if (res && res.ok && res.result === 'ALREADY') {
+      kind = 'warn'; label = 'ALREADY CHECKED IN';
+      note = 'First checked in at ' + fmtTime(p.time) + ' on ' + fmtDate(p.date);
+      beep(440, 300); buzz([120, 80, 120]);
+    } else if (res && res.ok && res.result === 'INVALID') {
+      kind = 'bad'; label = 'INVALID PASS'; note = 'This QR code is not a valid Petrodecision pass.';
+      beep(200, 450); buzz(400); p = null;
+    } else {
+      kind = 'bad'; label = 'NOT CHECKED';
+      note = (res && res.message ? res.message : 'Something went wrong.') + ' Please scan again.'; p = null;
+    }
+    box.className = 'result ' + kind;
+    $('result-top').textContent = label;
+    $('r-name').textContent = p ? p.name : '';
+    $('r-id').textContent = p ? p.regId : '';
+    $('r-org').textContent = p ? p.org : '';
+    $('r-note').textContent = note;
+    box.hidden = false;
+    setStatus(label, kind === 'ok' ? 'ok' : (kind === 'bad' ? 'bad' : 'info'));
+    addRecent(label, kind, p);
+  }
+
+  function addRecent(label, kind, p) {
+    var d = new Date();
+    recent.unshift({ time: two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds()), name: p ? p.name : '-', label: label, kind: kind });
+    recent = recent.slice(0, 8);
+    var body = $('recent'); body.innerHTML = '';
+    recent.forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', 'mono', fmtTime(r.time)));
+      tr.appendChild(el('td', '', r.name));
+      tr.appendChild(el('td', r.kind === 'ok' ? 'r-ok-t' : (r.kind === 'warn' ? 'r-warn-t' : 'r-bad-t'), r.label));
+      body.appendChild(tr);
+    });
+  }
+
+  // ---------- start-up ----------
+  function init() {
+    $('login-form').addEventListener('submit', onLogin);
+    $('signout').addEventListener('click', function () { signOut(); });
+
+    $('start').addEventListener('click', function () {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) {}
+      if (stream) { stopCamera(); setStatus('Camera stopped.', 'info'); }
+      else startCamera(currentDeviceId && everStarted ? currentDeviceId : null);
+    });
+    $('flip').addEventListener('click', function () {
+      if (devices.length < 2) return;
+      var idx = 0; devices.forEach(function (d, i) { if (d.deviceId === currentDeviceId) idx = i; });
+      var next = devices[(idx + 1) % devices.length]; currentDeviceId = next.deviceId; startCamera(next.deviceId);
+    });
+    $('select').addEventListener('change', function (e) { currentDeviceId = e.target.value; startCamera(currentDeviceId); });
+    $('torch').addEventListener('click', function () {
+      try {
+        torchOn = !torchOn;
+        stream.getVideoTracks()[0].applyConstraints({ advanced: [{ torch: torchOn }] }).catch(function () { torchOn = false; });
+        $('torch').textContent = torchOn ? 'Light off' : 'Light';
+      } catch (e) {}
+    });
+    $('next').addEventListener('click', function () { resume(); });
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { if (stream) stopCamera(); }
+      else if (everStarted && !stream && !$('app').hidden) startCamera(currentDeviceId);
+    });
+
+    // logo and existing session
+    if (API_URL.indexOf('https://script.google.com/macros/s/') === 0) {
+      api({ action: 'logo' }).then(function (r) { if (r && r.ok && r.logo) applyLogo(r.logo); });
+      var saved = loadSession();
+      if (saved) {
+        token = saved;
+        api({ action: 'session', token: saved }).then(function (r) {
+          if (r && r.ok) showApp(); else { token = null; saveSession(null); showLogin(); }
+        });
+        return;
+      }
+    }
+    showLogin();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
