@@ -508,9 +508,20 @@
       else if (everStarted && !stream && !$('app').hidden) startCamera(currentDeviceId);
     });
 
-    // logo and existing session
+    // logo, hand-over link from the main app, or an existing session
     if (API_URL.indexOf('https://script.google.com/macros/s/') === 0) {
       api({ action: 'logo' }).then(function (r) { if (r && r.ok && r.logo) applyLogo(r.logo); });
+
+      var m = /[#&]h=([a-f0-9]{32})/i.exec(location.hash || '');
+      if (m) {
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+        api({ action: 'exchange', code: m[1] }).then(function (r) {
+          if (r && r.ok && r.token) { token = r.token; saveSession(token); showApp(); }
+          else showLogin((r && r.message) || 'This sign-in link has expired. Please enter the PIN.');
+        });
+        return;
+      }
+
       var saved = loadSession();
       if (saved) {
         token = saved;
